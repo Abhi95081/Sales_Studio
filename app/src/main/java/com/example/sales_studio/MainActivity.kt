@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -38,7 +37,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Sales_StudioTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    KidsTVLauncher()
+                    KidsTVLauncher(Modifier.padding(innerPadding))
                 }
             }
         }
@@ -46,7 +45,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun KidsTVLauncher() {
+fun KidsTVLauncher(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val approvedApps = remember {
         listOf(
@@ -57,8 +56,11 @@ fun KidsTVLauncher() {
     }
 
     val packageManager = context.packageManager
-    val installedApps = remember {
+    val allInstalledApps = remember {
         packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+    }
+    val approvedInstalledApps = remember {
+        allInstalledApps
             .filter { it.packageName in approvedApps }
             .map {
                 Triple(
@@ -68,10 +70,21 @@ fun KidsTVLauncher() {
                 )
             }
     }
+    val appsToDisplay = if (approvedInstalledApps.isEmpty()) {
+        allInstalledApps.map {
+            Triple(
+                packageManager.getApplicationLabel(it).toString(),
+                it.packageName,
+                packageManager.getApplicationIcon(it).toBitmap().asImageBitmap()
+            )
+        }
+    } else {
+        approvedInstalledApps
+    }
 
     MaterialTheme {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = modifier.fillMaxSize(),
             color = Color(0xFF2196F3)
         ) {
             Column(
@@ -89,9 +102,16 @@ fun KidsTVLauncher() {
                         .semantics { contentDescription = "Kids TV Launcher Title" }
                 )
 
-                if (installedApps.isEmpty()) {
+                Text(
+                    text = "Found ${approvedInstalledApps.size} approved apps",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (appsToDisplay.isEmpty()) {
                     Text(
-                        text = "No approved apps installed",
+                        text = "No apps installed on device",
                         color = Color.White,
                         fontSize = 18.sp
                     )
@@ -103,7 +123,7 @@ fun KidsTVLauncher() {
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(installedApps) { app ->
+                        items(appsToDisplay) { app ->
                             AppItem(
                                 appName = app.first,
                                 packageName = app.second,
